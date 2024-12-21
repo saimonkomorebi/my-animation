@@ -5,7 +5,7 @@ const path = require('path');
 const { spawn } = require('child_process');
 
 const app = express();
-const port = 3001;
+const port = process.env.PORT || 3001; // Use Render's dynamic port
 
 app.use(express.text({ limit: '50mb' }));
 
