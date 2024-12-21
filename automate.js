@@ -1,4 +1,5 @@
 // automate.js
+process.env.PUPPETEER_CACHE_DIR = '/tmp/puppeteer_cache'; // Set cache directory
 const { exec } = require('child_process');
 const fs = require('fs');
 const path = require('path');
@@ -36,16 +37,7 @@ const framesDir = path.join(__dirname, 'frames');
     console.log('Capturing frames...');
     const browser = await puppeteer.launch({
       headless: true,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-gpu',
-        '--no-first-run',
-        '--no-zygote',
-        '--disable-extensions',
-      ],
-      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || puppeteer.executablePath(),
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
     });
     const page = await browser.newPage();
 

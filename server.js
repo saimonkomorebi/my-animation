@@ -5,7 +5,7 @@ const path = require('path');
 const { spawn } = require('child_process');
 
 const app = express();
-const port = process.env.PORT || 3001;
+const port = 3001;
 
 app.use(express.text({ limit: '50mb' }));
 
