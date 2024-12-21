@@ -1,3 +1,4 @@
+// captureFrames.js (Modified)
 const fs = require('fs');
 const path = require('path');
 const puppeteer = require('puppeteer');
@@ -29,9 +30,12 @@ const runCommand = (command) => {
   try {
     console.log('Launching Puppeteer...');
 
-    // Launch Puppeteer with a specified executable path for Render environment
+    // Set Puppeteer cache directory
+    process.env.PUPPETEER_CACHE_DIR = path.resolve(__dirname, '.cache/puppeteer');
+
+    // Launch Puppeteer with the executable path from puppeteer.executablePath()
     const browser = await puppeteer.launch({
-      executablePath: '/usr/bin/chromium',  // Path to Chromium in Render environment
+      executablePath: puppeteer.executablePath(),
       headless: true,
     });
     
