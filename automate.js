@@ -1,10 +1,9 @@
 // automate.js
-process.env.PUPPETEER_CACHE_DIR = '/tmp/puppeteer_cache'; // Set cache directory
-const { exec } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const puppeteer = require('puppeteer');
 const express = require('express');
+const { exec } = require('child_process');
 
 const framesDir = path.join(__dirname, 'frames');
 
