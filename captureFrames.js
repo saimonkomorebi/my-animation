@@ -7,20 +7,6 @@ const { exec } = require('child_process');
 // Set Puppeteer cache directory
 process.env.PUPPETEER_CACHE_DIR = path.resolve(__dirname, '.cache/puppeteer');
 
-// Ensure Puppeteer Chromium installation
-(async () => {
-  const puppeteerCore = require('puppeteer-core');
-  const puppeteerCacheDir = process.env.PUPPETEER_CACHE_DIR;
-  const chromiumPath = puppeteerCore.executablePath();
-  if (!fs.existsSync(chromiumPath)) {
-    console.log('Chromium not found, installing...');
-    await require('child_process').execSync(`npx puppeteer install`, {
-      stdio: 'inherit',
-      env: { ...process.env, PUPPETEER_CACHE_DIR: puppeteerCacheDir },
-    });
-  }
-})();
-
 // Output directory for frames
 const outputDir = 'frames';
 const outputPath = path.join(__dirname, outputDir);
@@ -47,12 +33,12 @@ const runCommand = (command) => {
   try {
     console.log('Launching Puppeteer...');
 
-    // Launch Puppeteer with the executable path from puppeteer.executablePath()
+    // Launch Puppeteer without specifying executablePath
     const browser = await puppeteer.launch({
-      executablePath: puppeteer.executablePath(),
       headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
     });
-    
+
     const page = await browser.newPage();
     await page.goto('http://localhost:3000');
     await page.setViewport({ width: 800, height: 600 });
