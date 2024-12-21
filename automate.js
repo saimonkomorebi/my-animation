@@ -34,11 +34,23 @@ const framesDir = path.join(__dirname, 'frames');
     });
 
     console.log('Capturing frames...');
-    const browser = await puppeteer.launch();
+    const browser = await puppeteer.launch({
+      headless: true,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu',
+        '--no-first-run',
+        '--no-zygote',
+        '--disable-extensions',
+      ],
+      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || puppeteer.executablePath(),
+    });
     const page = await browser.newPage();
 
-    await page.goto('http://localhost:3000');
-    await page.setViewport({ width: 800, height: 600 });
+    await page.goto('http://localhost:3000', { waitUntil: 'networkidle0' });
+    await page.setViewport({ width: 400, height: 300 }); // Match canvas size
 
     if (!fs.existsSync(framesDir)) {
       fs.mkdirSync(framesDir);
