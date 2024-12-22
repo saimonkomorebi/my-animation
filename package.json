@@ -6,26 +6,18 @@
         "start": "react-scripts start",
         "build": "react-scripts build",
         "test": "react-scripts test",
-        "eject": "react-scripts eject"
-      },
-      "dependencies": {
-        "web-vitals": "^2.1.4",
+        "eject": "react-scripts eject",
+        "postinstall": "npx puppeteer install"
+    },
+    "dependencies": {
         "express": "^4.21.2",
+        "puppeteer": "^23.11.1",
         "react": "^19.0.0",
         "react-dom": "^19.0.0",
         "react-scripts": "^5.0.1",
-        "puppeteer": "^23.11.1"
-      },
-      "devDependencies": {},
-      "engines": {
+        "web-vitals": "^2.1.4"
+    },
+    "engines": {
         "node": ">=14.0.0"
-      }
     }
-
-
-
-
-
-
-
-
+}
