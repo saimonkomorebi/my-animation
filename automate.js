@@ -1,9 +1,9 @@
 // automate.js
+const { exec } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const puppeteer = require('puppeteer');
 const express = require('express');
-const { exec } = require('child_process');
 
 const framesDir = path.join(__dirname, 'frames');
 
