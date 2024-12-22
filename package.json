@@ -7,7 +7,7 @@
         "build": "react-scripts build",
         "test": "react-scripts test",
         "eject": "react-scripts eject",
-        "postinstall": "npx puppeteer install"
+        "postinstall": "PUPPETEER_CACHE_DIR=/opt/render/project/src/.cache/puppeteer npx puppeteer install"
     },
     "dependencies": {
         "express": "^4.21.2",
