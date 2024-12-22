@@ -44,7 +44,7 @@ const App = () => {
 
       // Secondary Text
       ctx.font = "16px 'Cormorant Garamond'";
-      ctx.fillText('Embrace the journey', width / 2, height - 20);
+      ctx.fillText('Embrace the journe', width / 2, height - 20);
 
       // Subtle border
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
