@@ -1,4 +1,3 @@
-// captureFrames.js (Modified)
 const fs = require('fs');
 const path = require('path');
 const puppeteer = require('puppeteer');
@@ -13,7 +12,7 @@ const outputPath = path.join(__dirname, outputDir);
 
 // Ensure output directory exists
 if (!fs.existsSync(outputPath)) {
-  fs.mkdirSync(outputPath);
+  fs.mkdirSync(outputPath, { recursive: true });
 }
 
 // Function to run shell commands
@@ -32,8 +31,6 @@ const runCommand = (command) => {
 (async () => {
   try {
     console.log('Launching Puppeteer...');
-
-    // Launch Puppeteer without specifying executablePath
     const browser = await puppeteer.launch({
       headless: true,
       args: ['--no-sandbox', '--disable-setuid-sandbox'],
@@ -44,13 +41,11 @@ const runCommand = (command) => {
     await page.setViewport({ width: 800, height: 600 });
 
     console.log('Capturing frames...');
-
     const fps = 30;
     const totalFrames = fps * 10;
 
     for (let i = 0; i < totalFrames; i++) {
       try {
-        console.log(`Setting frame: ${i}`);
         await page.evaluate(async (frame) => {
           await window.setCurrentFrame(frame);
         }, i);
@@ -59,23 +54,17 @@ const runCommand = (command) => {
         await page.screenshot({ path: screenshotPath });
       } catch (err) {
         console.error(`Error capturing frame ${i}: ${err.message}`);
-        break; // Exit the loop if an error occurs
+        break;
       }
     }
 
     console.log('Frames captured. Creating video...');
-
     const ffmpegCommand = `ffmpeg -framerate ${fps} -i ${path.join(outputPath, 'frame_%04d.png')} -c:v libx264 -crf 18 -pix_fmt yuv420p output.mp4`;
-
-    try {
-      await runCommand(ffmpegCommand);
-      console.log('Video created: output.mp4');
-    } catch (err) {
-      console.error('Error creating video:', err.message);
-    }
+    await runCommand(ffmpegCommand);
+    console.log('Video created: output.mp4');
 
     await browser.close();
   } catch (err) {
-    console.error('Error during Puppeteer operation:', err.message);
+    console.error('Error:', err.message);
   }
 })();
