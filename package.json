@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "postinstall": "apt-get update && apt-get install -y libnss3 libxss1 libasound2",
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",

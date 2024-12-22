@@ -1,8 +1,13 @@
-#!/usr/bin/env bash
-set -eux
+#!/bin/bash
+echo "Starting build process..."
 
-# Set Puppeteer cache directory
-export PUPPETEER_CACHE_DIR=$(pwd)/.cache/puppeteer
+# Optional: Clear npm cache (use only if necessary)
+npm cache clean --force
 
-# Install Puppeteer and its required Chrome version
-npx puppeteer install
+# Install dependencies
+npm install
+
+# Build the React app
+npm run build
+
+echo "Build process completed."
