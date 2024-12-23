@@ -4,12 +4,13 @@
   "private": true,
   "scripts": {
     "start": "react-scripts start",
-    "build": "apt-get update && apt-get install -y chromium-browser && react-scripts build",
+    "build": "react-scripts build",
     "postinstall": "npx puppeteer install",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
   "dependencies": {
+    "@sparticuz/chromium": "^115.0.0",
     "express": "^4.18.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",

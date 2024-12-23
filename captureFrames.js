@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const puppeteer = require('puppeteer-core');
+const chromium = require('@sparticuz/chromium');
 const { exec } = require('child_process');
 
 const outputDir = 'frames';
@@ -25,9 +26,9 @@ const runCommand = (command) => {
 (async () => {
   console.log('Launching Puppeteer...');
   const browser = await puppeteer.launch({
-    executablePath: '/usr/bin/chromium-browser', // Path to Chromium on Render
-    headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    executablePath: await chromium.executablePath(),
+    headless: chromium.headless,
+    args: chromium.args,
   });
   const page = await browser.newPage();
   await page.goto('http://localhost:3000');
