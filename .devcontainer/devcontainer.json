@@ -1,0 +1,13 @@
+{
+    "name": "Node.js with FFmpeg",
+    "build": {
+        "dockerfile": "Dockerfile"
+    },
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "dbaeumer.vscode-eslint"
+            ]
+        }
+    }
+}

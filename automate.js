@@ -1,109 +1,125 @@
-const { exec } = require('child_process');
-const fs = require('fs');
-const path = require('path');
 const puppeteer = require('puppeteer-core');
 const chromium = require('@sparticuz/chromium');
 const express = require('express');
+const path = require('path');
+const fs = require('fs');
+const { exec } = require('child_process');
+const ffmpeg = require('@ffmpeg-installer/ffmpeg');
 
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 const framesDir = path.join(__dirname, 'frames');
 
-(async () => {
+if (!fs.existsSync(framesDir)) {
+  fs.mkdirSync(framesDir);
+}
+
+const captureFrame = async (page, frameNumber, retryCount = 0) => {
   try {
-    console.log('Building React app...');
+    await page.evaluate((frame) => window.setCurrentFrame(frame), frameNumber);
+    await sleep(100);
+
+    const screenshotPath = path.join(
+      framesDir,
+      `frame_${String(frameNumber).padStart(4, '0')}.png`
+    );
+
+    const canvas = await page.$('canvas');
+    if (!canvas) throw new Error('Canvas element not found');
+
+    await canvas.screenshot({ path: screenshotPath });
+    
+    if (!fs.existsSync(screenshotPath)) {
+      throw new Error('Screenshot file not created');
+    }
+  } catch (error) {
+    if (retryCount < 3) {
+      console.log(`Retrying frame ${frameNumber} (attempt ${retryCount + 1})`);
+      await page.reload({ waitUntil: 'networkidle0' });
+      return captureFrame(page, frameNumber, retryCount + 1);
+    }
+    throw error;
+  }
+};
+
+(async () => {
+  let browser;
+  let server;
+
+  try {
+    // Install FFmpeg
     await new Promise((resolve, reject) => {
-      const buildProcess = exec('npm run build', { cwd: __dirname });
-
-      buildProcess.stdout.on('data', (data) => console.log(data.toString()));
-      buildProcess.stderr.on('data', (data) => console.error(data.toString()));
-
-      buildProcess.on('close', (code) => {
-        code === 0 ? resolve() : reject(new Error('Error building React app.'));
+      exec('npm install @ffmpeg-installer/ffmpeg --save', { cwd: __dirname }, (error) => {
+        if (error) reject(error);
+        else resolve();
       });
     });
 
-    console.log('Starting static server...');
-    const app = express();
-    app.use(express.static(path.join(__dirname, 'build')));
-    const server = app.listen(3000, () => {
-      console.log('Static server running on port 3000');
+    console.log('Building React app...');
+    await new Promise((resolve, reject) => {
+      exec('npm run build', { cwd: __dirname }, (error) => {
+        if (error) reject(error);
+        else resolve();
+      });
     });
 
-    console.log('Capturing frames...');
-    const browser = await puppeteer.launch({
+    console.log('Starting server...');
+    const app = express();
+    app.use(express.static(path.join(__dirname, 'build')));
+    server = app.listen(3000);
+
+    console.log('Launching browser...');
+    browser = await puppeteer.launch({
       executablePath: await chromium.executablePath(),
       headless: chromium.headless,
-      args: chromium.args,
+      defaultViewport: { width: 400, height: 300 },
+      args: [...chromium.args, '--no-sandbox', '--disable-setuid-sandbox']
     });
 
     const page = await browser.newPage();
-    await page.goto('http://localhost:3000', { waitUntil: 'networkidle0' });
-    await page.setViewport({ width: 400, height: 300 });
+    await page.goto('http://localhost:3000', { 
+      waitUntil: 'networkidle0',
+      timeout: 30000 
+    });
 
-    if (!fs.existsSync(framesDir)) {
-      fs.mkdirSync(framesDir);
-    }
-
-    const fps = 30;
     const totalFrames = 30;
-
     for (let i = 0; i < totalFrames; i++) {
       console.log(`Capturing frame: ${i}`);
-      try {
-        const frameExists = await page.evaluate((frame) => {
-          if (typeof window.setCurrentFrame === 'function') {
-            window.setCurrentFrame(frame);
-            return true;
-          }
-          return false;
-        }, i);
-
-        if (!frameExists) {
-          console.error(`Frame function not found for frame ${i}.`);
-          break;
-        }
-
-        const screenshotPath = path.join(
-          framesDir,
-          `frame_${String(i).padStart(4, '0')}.png`
-        );
-
-        const canvas = await page.$('canvas');
-        if (!canvas) throw new Error('Canvas element not found');
-        await canvas.screenshot({ path: screenshotPath });
-      } catch (error) {
-        console.error(`Error capturing frame ${i}:`, error.message);
-        break;
-      }
+      await Promise.race([
+        captureFrame(page, i),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Frame capture timeout')), 10000)
+        )
+      ]);
     }
 
-    await browser.close();
-    console.log('Frames captured successfully.');
-
     console.log('Creating video...');
-    const ffmpegCommand = `ffmpeg -framerate ${fps} -i ${path.join(
+    const ffmpegCommand = `"${ffmpeg.path}" -y -framerate 30 -i ${path.join(
       framesDir,
       'frame_%04d.png'
-    )} -c:v libx264 -crf 18 -pix_fmt yuv420p output.mp4`;
+    )} -c:v libx264 -preset ultrafast -crf 18 -pix_fmt yuv420p output.mp4`;
 
     await new Promise((resolve, reject) => {
-      const process = exec(ffmpegCommand);
-
-      process.stdout.on('data', (data) => console.log(data.toString()));
-      process.stderr.on('data', (data) => console.error(data.toString()));
-
-      process.on('close', (code) => {
-        code === 0 ? resolve() : reject(new Error(`Command failed: ${ffmpegCommand}`));
+      const process = exec(ffmpegCommand, { maxBuffer: 1024 * 1024 * 10 });
+      
+      process.stdout.on('data', (data) => console.log(data));
+      process.stderr.on('data', (data) => console.error(data));
+      
+      process.on('close', code => {
+        if (code === 0) resolve();
+        else reject(new Error(`FFmpeg failed with code ${code}`));
       });
+      process.on('error', reject);
     });
 
-    console.log('Video created successfully: output.mp4');
+    console.log('Video created successfully');
 
-    server.close(() => {
-      console.log('Static server stopped.');
-      process.exit(0);
-    });
   } catch (error) {
     console.error('Error:', error.message);
     process.exit(1);
+  } finally {
+    if (browser) await browser.close();
+    if (server) server.close();
+    console.log('Cleanup completed');
+    process.exit(0);
   }
 })();
