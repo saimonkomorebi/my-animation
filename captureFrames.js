@@ -1,7 +1,7 @@
 // captureFrames.js
 const fs = require('fs');
 const path = require('path');
-const puppeteer = require('puppeteer');
+const puppeteer = require('puppeteer-core');
 const { exec } = require('child_process');
 
 const outputDir = 'frames';
