@@ -1,44 +1,31 @@
-// server.js
 const express = require('express');
-const fs = require('fs');
 const path = require('path');
-const { spawn } = require('child_process');
+const { generateVideo } = require('./automate');
 
 const app = express();
-const port = 3001;
+const port = process.env.PORT || 3000;
 
-app.use(express.text({ limit: '50mb' }));
+app.use(express.json());
+app.use(express.static(path.join(__dirname, 'build')));
 
-app.post('/generate-video', async (req, res) => {
+app.post('/api/generate-video', async (req, res) => {
   try {
-    // Replace App.js with the content from the request body
-    fs.writeFileSync(path.join(__dirname, 'src', 'App.js'), req.body);
-
-    // Run automate.js
-    const automateProcess = spawn('node', ['automate.js'], { cwd: __dirname });
-
-    automateProcess.stdout.on('data', (data) => console.log(data.toString()));
-    automateProcess.stderr.on('data', (data) => console.error(data.toString()));
-
-    automateProcess.on('close', (code) => {
-      if (code === 0) {
-        // Read the output.mp4 file and send it as a response
-        const videoPath = path.join(__dirname, 'output.mp4');
-        if (fs.existsSync(videoPath)) {
-          res.sendFile(videoPath);
-        } else {
-          res.status(500).send('Video not found.');
-        }
-      } else {
-        res.status(500).send('Error generating video.');
+    console.log('Received video generation request');
+    const videoPath = await generateVideo();
+    res.sendFile(videoPath, (err) => {
+      if (err) {
+        console.error('Error sending file:', err);
+        res.status(500).send('Error sending video file');
       }
+      // Cleanup video file after sending
+      require('fs').unlinkSync(videoPath);
     });
-  } catch (err) {
-    console.error(`Server error: ${err.message}`);
-    res.status(500).send('Server error.');
+  } catch (error) {
+    console.error('Video generation error:', error);
+    res.status(500).send(error.message);
   }
 });
 
 app.listen(port, () => {
-  console.log(`Server is listening on port ${port}`);
+  console.log(`Server running on port ${port}`);
 });
