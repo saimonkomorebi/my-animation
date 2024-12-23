@@ -2,7 +2,7 @@
 const { exec } = require('child_process');
 const fs = require('fs');
 const path = require('path');
-const puppeteer-core = require('puppeteer-core');
+const puppeteer = require('puppeteer-core');
 const express = require('express');
 
 const framesDir = path.join(__dirname, 'frames');
@@ -34,7 +34,7 @@ const framesDir = path.join(__dirname, 'frames');
     });
 
     console.log('Capturing frames...');
-    const browser = await puppeteer-core.launch({
+    const browser = await puppeteer.launch({
       headless: true,
       args: ['--no-sandbox', '--disable-setuid-sandbox'],
     });
