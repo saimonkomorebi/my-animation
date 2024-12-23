@@ -1,24 +1,23 @@
 {
-    "name": "my-animation",
-    "version": "1.0.0",
-    "private": true,
-    "scripts": {
-      "start": "react-scripts start",
-      "build": "react-scripts build",
-      "postinstall": "npx puppeteer install",
-      "test": "react-scripts test",
-      "eject": "react-scripts eject"
-    },
-    "dependencies": {
-      "express": "^4.18.2",
-      "react": "^18.2.0",
-      "react-dom": "^18.2.0",
-      "react-scripts": "^5.0.1",
-      "puppeteer-core": "^23.11.1"
-    },
-    "devDependencies": {},
-    "engines": {
-      "node": ">=14.1.0"
-    }
+  "name": "my-animation",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "apt-get update && apt-get install -y chromium-browser && react-scripts build",
+    "postinstall": "npx puppeteer install",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-scripts": "^5.0.1",
+    "puppeteer-core": "^23.11.1"
+  },
+  "devDependencies": {},
+  "engines": {
+    "node": ">=14.1.0"
   }
-  
+}

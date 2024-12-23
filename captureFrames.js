@@ -1,4 +1,3 @@
-// captureFrames.js
 const fs = require('fs');
 const path = require('path');
 const puppeteer = require('puppeteer-core');
@@ -25,7 +24,11 @@ const runCommand = (command) => {
 
 (async () => {
   console.log('Launching Puppeteer...');
-  const browser = await puppeteer.launch();
+  const browser = await puppeteer.launch({
+    executablePath: '/usr/bin/chromium-browser', // Path to Chromium on Render
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+  });
   const page = await browser.newPage();
   await page.goto('http://localhost:3000');
   await page.setViewport({ width: 800, height: 600 });
@@ -49,7 +52,7 @@ const runCommand = (command) => {
       await page.screenshot({ path: screenshotPath });
     } catch (err) {
       console.error(`Error capturing frame ${i}: ${err.message}`);
-      break; // Exit the loop if an error occurs
+      break;
     }
   }
 

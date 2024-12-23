@@ -1,4 +1,3 @@
-// automate.js
 const { exec } = require('child_process');
 const fs = require('fs');
 const path = require('path');
@@ -35,20 +34,21 @@ const framesDir = path.join(__dirname, 'frames');
 
     console.log('Capturing frames...');
     const browser = await puppeteer.launch({
+      executablePath: '/usr/bin/chromium-browser', // Path to Chromium on Render
       headless: true,
       args: ['--no-sandbox', '--disable-setuid-sandbox'],
     });
     const page = await browser.newPage();
 
     await page.goto('http://localhost:3000', { waitUntil: 'networkidle0' });
-    await page.setViewport({ width: 400, height: 300 }); // Match canvas size
+    await page.setViewport({ width: 400, height: 300 });
 
     if (!fs.existsSync(framesDir)) {
       fs.mkdirSync(framesDir);
     }
 
     const fps = 30;
-    const totalFrames = fps * 20; // 20 seconds as in your App.js
+    const totalFrames = fps * 20;
 
     for (let i = 0; i < totalFrames; i++) {
       try {
@@ -62,12 +62,11 @@ const framesDir = path.join(__dirname, 'frames');
           `frame_${String(i).padStart(4, '0')}.png`
         );
 
-        // Capture the canvas element directly
         const canvas = await page.$('canvas');
         await canvas.screenshot({ path: screenshotPath });
       } catch (error) {
         console.error(`Error capturing frame ${i}:`, error.message);
-        break; // Exit the loop if an error occurs
+        break;
       }
     }
 
@@ -97,9 +96,8 @@ const framesDir = path.join(__dirname, 'frames');
     console.log('Stopping static server...');
     server.close(() => {
       console.log('Static server stopped.');
-      process.exit(0); // Exit the script
+      process.exit(0);
     });
-
   } catch (error) {
     console.error('Error:', error.message);
     process.exit(1);
