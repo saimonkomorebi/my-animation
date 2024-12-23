@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
-const puppeteer = require('puppeteer');
+const puppeteer = require('puppeteer-core');
+const chromium = require('@sparticuz/chromium');
 const { exec } = require('child_process');
 
 const framesDir = path.join(__dirname, 'frames');
@@ -13,35 +14,41 @@ const runCommand = (command) => {
     process.stderr.on('data', (data) => console.error(data.toString()));
 
     process.on('close', (code) => {
-      if (code === 0) resolve();
-      else reject(new Error(`Command failed: ${command}`));
+      code === 0 ? resolve() : reject(new Error(`Command failed: ${command}`));
     });
   });
 };
 
 (async () => {
-  if (!fs.existsSync(framesDir)) {
-    fs.mkdirSync(framesDir);
-  }
+  if (!fs.existsSync(framesDir)) fs.mkdirSync(framesDir);
 
-  const browser = await puppeteer.launch();
+  const browser = await puppeteer.launch({
+    executablePath: await chromium.executablePath(),
+    headless: chromium.headless,
+    args: chromium.args,
+  });
+
   const page = await browser.newPage();
-
-  const viewportWidth = 800;
-  const viewportHeight = 600;
-
-  await page.setViewport({ width: viewportWidth, height: viewportHeight });
   await page.goto('http://localhost:3000', { waitUntil: 'networkidle0' });
+  await page.setViewport({ width: 800, height: 600 });
 
-  console.log('Rendering frames...');
   const fps = 30;
-  const totalFrames = 30; // Reduced to 30 frames for faster processing
+  const totalFrames = 30;
 
   for (let frame = 0; frame < totalFrames; frame++) {
     console.log(`Rendering frame ${frame + 1}/${totalFrames}`);
-    await page.evaluate(async (frameNumber) => {
-      await window.setCurrentFrame(frameNumber);
+    const frameExists = await page.evaluate((frameNumber) => {
+      if (typeof window.setCurrentFrame === 'function') {
+        window.setCurrentFrame(frameNumber);
+        return true;
+      }
+      return false;
     }, frame);
+
+    if (!frameExists) {
+      console.error(`Frame function not found at frame ${frame}`);
+      break;
+    }
 
     const framePath = path.join(
       framesDir,
@@ -52,7 +59,6 @@ const runCommand = (command) => {
 
   await browser.close();
 
-  console.log('Combining frames into video...');
   const outputVideo = path.join(__dirname, 'output.mp4');
   const ffmpegCommand = `ffmpeg -framerate ${fps} -i ${path.join(
     framesDir,

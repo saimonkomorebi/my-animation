@@ -17,12 +17,7 @@ const framesDir = path.join(__dirname, 'frames');
       buildProcess.stderr.on('data', (data) => console.error(data.toString()));
 
       buildProcess.on('close', (code) => {
-        if (code === 0) {
-          console.log('React app built successfully.');
-          resolve();
-        } else {
-          reject(new Error('Error building React app.'));
-        }
+        code === 0 ? resolve() : reject(new Error('Error building React app.'));
       });
     });
 
@@ -30,7 +25,7 @@ const framesDir = path.join(__dirname, 'frames');
     const app = express();
     app.use(express.static(path.join(__dirname, 'build')));
     const server = app.listen(3000, () => {
-      console.log('Static server is running on port 3000');
+      console.log('Static server running on port 3000');
     });
 
     console.log('Capturing frames...');
@@ -39,8 +34,8 @@ const framesDir = path.join(__dirname, 'frames');
       headless: chromium.headless,
       args: chromium.args,
     });
-    const page = await browser.newPage();
 
+    const page = await browser.newPage();
     await page.goto('http://localhost:3000', { waitUntil: 'networkidle0' });
     await page.setViewport({ width: 400, height: 300 });
 
@@ -49,14 +44,23 @@ const framesDir = path.join(__dirname, 'frames');
     }
 
     const fps = 30;
-    const totalFrames = 30; // Reduced to 30 frames for faster processing
+    const totalFrames = 30;
 
     for (let i = 0; i < totalFrames; i++) {
+      console.log(`Capturing frame: ${i}`);
       try {
-        console.log(`Capturing frame: ${i}`);
-        await page.evaluate(async (frame) => {
-          await window.setCurrentFrame(frame);
+        const frameExists = await page.evaluate((frame) => {
+          if (typeof window.setCurrentFrame === 'function') {
+            window.setCurrentFrame(frame);
+            return true;
+          }
+          return false;
         }, i);
+
+        if (!frameExists) {
+          console.error(`Frame function not found for frame ${i}.`);
+          break;
+        }
 
         const screenshotPath = path.join(
           framesDir,
@@ -64,6 +68,7 @@ const framesDir = path.join(__dirname, 'frames');
         );
 
         const canvas = await page.$('canvas');
+        if (!canvas) throw new Error('Canvas element not found');
         await canvas.screenshot({ path: screenshotPath });
       } catch (error) {
         console.error(`Error capturing frame ${i}:`, error.message);
@@ -87,14 +92,12 @@ const framesDir = path.join(__dirname, 'frames');
       process.stderr.on('data', (data) => console.error(data.toString()));
 
       process.on('close', (code) => {
-        if (code === 0) resolve();
-        else reject(new Error(`Command failed: ${ffmpegCommand}`));
+        code === 0 ? resolve() : reject(new Error(`Command failed: ${ffmpegCommand}`));
       });
     });
 
     console.log('Video created successfully: output.mp4');
 
-    console.log('Stopping static server...');
     server.close(() => {
       console.log('Static server stopped.');
       process.exit(0);
