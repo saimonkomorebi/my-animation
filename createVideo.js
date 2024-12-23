@@ -1,4 +1,3 @@
-// createVideo.js
 const fs = require('fs');
 const path = require('path');
 const puppeteer = require('puppeteer');
@@ -21,12 +20,10 @@ const runCommand = (command) => {
 };
 
 (async () => {
-  // Create frames directory if it doesn't exist
   if (!fs.existsSync(framesDir)) {
     fs.mkdirSync(framesDir);
   }
 
-  // Launch Puppeteer
   const browser = await puppeteer.launch();
   const page = await browser.newPage();
 
@@ -34,15 +31,11 @@ const runCommand = (command) => {
   const viewportHeight = 600;
 
   await page.setViewport({ width: viewportWidth, height: viewportHeight });
-
-  // Load React app
   await page.goto('http://localhost:3000', { waitUntil: 'networkidle0' });
 
-  // Render frames
   console.log('Rendering frames...');
   const fps = 30;
-  const duration = 10; // seconds
-  const totalFrames = fps * duration;
+  const totalFrames = 30; // Reduced to 30 frames for faster processing
 
   for (let frame = 0; frame < totalFrames; frame++) {
     console.log(`Rendering frame ${frame + 1}/${totalFrames}`);
@@ -59,7 +52,6 @@ const runCommand = (command) => {
 
   await browser.close();
 
-  // Combine frames into video
   console.log('Combining frames into video...');
   const outputVideo = path.join(__dirname, 'output.mp4');
   const ffmpegCommand = `ffmpeg -framerate ${fps} -i ${path.join(

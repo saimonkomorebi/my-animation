@@ -49,7 +49,7 @@ const framesDir = path.join(__dirname, 'frames');
     }
 
     const fps = 30;
-    const totalFrames = fps * 20;
+    const totalFrames = 30; // Reduced to 30 frames for faster processing
 
     for (let i = 0; i < totalFrames; i++) {
       try {
