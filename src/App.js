@@ -40,11 +40,11 @@ const App = () => {
       ctx.font = "italic 18px 'Playfair Display'";
       ctx.fillStyle = 'white';
       ctx.textAlign = 'center';
-      ctx.fillText('Progress is not linear', width / 2, height - 40);
+      ctx.fillText('hijo de mil puta is not linear', width / 2, height - 40);
 
       // Secondary Text
       ctx.font = "16px 'Cormorant Garamond'";
-      ctx.fillText('Embrace the journe', width / 2, height - 20);
+      ctx.fillText('Embrace the journey', width / 2, height - 20);
 
       // Subtle border
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
