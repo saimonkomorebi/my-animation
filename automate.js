@@ -10,7 +10,7 @@ const execFilePromise = util.promisify(execFile);
 const CONFIG = {
     FRAME_TIMEOUT: 3000,
     FRAME_DELAY: 100,
-    TOTAL_FRAMES: 30,
+    TOTAL_FRAMES: 600,
     MAX_RETRIES: 3,
     PAGE_LOAD_TIMEOUT: 30000
 };
