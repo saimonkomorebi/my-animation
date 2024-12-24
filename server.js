@@ -1,57 +1,63 @@
 const express = require('express');
 const path = require('path');
 const cors = require('cors');
+const fs = require('fs');
 const { generateVideo } = require('./automate');
 
 const app = express();
-const port = process.env.PORT || 3000;
 
+// Enable CORS and JSON parsing
 app.use(cors());
 app.use(express.json());
+
+// Serve static files from the build directory
 app.use(express.static(path.join(__dirname, 'build')));
 
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Video generation endpoint
 app.post('/api/generate-video', async (req, res) => {
+  console.log('Received video generation request');
+  
   try {
-    console.log('Received video generation request');
-    
-    // Set proper headers
-    res.setHeader('Content-Type', 'video/mp4');
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    
     const videoPath = await generateVideo();
     
-    // Stream the file instead of sending it
-    const stream = fs.createReadStream(videoPath);
-    stream.pipe(res);
-    
-    stream.on('end', () => {
-      // Cleanup after streaming
-      fs.unlinkSync(videoPath);
-      console.log('Video sent and cleaned up');
-    });
+    if (!fs.existsSync(videoPath)) {
+      throw new Error('Video generation failed');
+    }
 
+    res.setHeader('Content-Type', 'video/mp4');
+    const stream = fs.createReadStream(videoPath);
+    
     stream.on('error', (error) => {
       console.error('Streaming error:', error);
       res.status(500).send('Error streaming video');
     });
 
-  } catch (error) {
-    console.error('Video generation error:', error);
-    res.status(500).json({
-      error: true,
-      message: error.message
+    stream.on('end', () => {
+      fs.unlinkSync(videoPath);
+      console.log('Video streamed and cleaned up');
     });
+
+    stream.pipe(res);
+
+  } catch (error) {
+    console.error('Error:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 
+// Error handler
 app.use((err, req, res, next) => {
-  console.error(err);
-  res.status(500).json({
-    error: true,
-    message: 'Internal server error'
-  });
+  console.error('Server error:', err);
+  res.status(500).json({ error: 'Internal server error' });
 });
 
-app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
+// Start server
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server running on port ${PORT}`);
 });
