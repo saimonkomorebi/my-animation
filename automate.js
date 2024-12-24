@@ -5,19 +5,59 @@ const fs = require('fs');
 const { exec } = require('child_process');
 const ffmpeg = require('@ffmpeg-installer/ffmpeg');
 
+const FRAME_TIMEOUT = 10000;
+const MAX_RETRIES = 3;
+
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+const captureFrame = async (page, frameNumber, framesDir) => {
+    let attempts = 0;
+    while (attempts < MAX_RETRIES) {
+        try {
+            const framePromise = new Promise(async (resolve, reject) => {
+                const timeout = setTimeout(() => {
+                    reject(new Error(`Frame ${frameNumber} capture timeout`));
+                }, FRAME_TIMEOUT);
+
+                try {
+                    await page.evaluate((frame) => window.setCurrentFrame(frame), frameNumber);
+                    await sleep(100);
+
+                    const framePath = path.join(framesDir, `frame_${String(frameNumber).padStart(4, '0')}.png`);
+                    await page.screenshot({ path: framePath });
+
+                    clearTimeout(timeout);
+                    resolve(framePath);
+                } catch (error) {
+                    clearTimeout(timeout);
+                    reject(error);
+                }
+            });
+
+            const framePath = await framePromise;
+            if (!fs.existsSync(framePath)) {
+                throw new Error('Frame not saved');
+            }
+            return true;
+        } catch (error) {
+            attempts++;
+            console.log(`Retry ${attempts} for frame ${frameNumber}: ${error.message}`);
+            await sleep(1000);
+            if (attempts === MAX_RETRIES) throw error;
+        }
+    }
+};
 
 const generateVideo = async () => {
     const framesDir = path.join(__dirname, 'frames');
     let browser = null;
+    let page = null;
 
     try {
-        // Ensure frames directory exists
         if (!fs.existsSync(framesDir)) {
             fs.mkdirSync(framesDir);
         }
 
-        // Launch browser
         browser = await puppeteer.launch({
             executablePath: await chromium.executablePath(),
             headless: chromium.headless,
@@ -25,32 +65,23 @@ const generateVideo = async () => {
             defaultViewport: { width: 400, height: 300 }
         });
 
-        const page = await browser.newPage();
+        page = await browser.newPage();
+        await page.setDefaultNavigationTimeout(30000);
         
-        // Navigate to local server
         await page.goto(`http://localhost:${process.env.PORT || 3000}`, {
             waitUntil: 'networkidle0',
             timeout: 30000
         });
 
-        // Capture frames
         const totalFrames = 30;
         for (let i = 0; i < totalFrames; i++) {
             console.log(`Capturing frame ${i}/${totalFrames}`);
+            await captureFrame(page, i, framesDir);
             
-            await page.evaluate((frame) => {
-                if (typeof window.setCurrentFrame === 'function') {
-                    return window.setCurrentFrame(frame);
-                }
-            }, i);
-            
-            await sleep(100);
-            
-            const framePath = path.join(framesDir, `frame_${String(i).padStart(4, '0')}.png`);
-            await page.screenshot({ path: framePath });
+            // Force garbage collection if available
+            if (global.gc) global.gc();
         }
 
-        // Generate video
         const outputPath = path.join(__dirname, `output_${Date.now()}.mp4`);
         await new Promise((resolve, reject) => {
             const ffmpegCmd = `"${ffmpeg.path}" -y -framerate 30 -i ${path.join(
@@ -66,12 +97,13 @@ const generateVideo = async () => {
 
         return outputPath;
 
+    } catch (error) {
+        throw error;
     } finally {
-        // Cleanup
-        if (browser) {
-            await browser.close();
-        }
+        if (page) await page.close();
+        if (browser) await browser.close();
         
+        // Cleanup frames
         if (fs.existsSync(framesDir)) {
             fs.readdirSync(framesDir).forEach(file => {
                 fs.unlinkSync(path.join(framesDir, file));
