@@ -4,20 +4,20 @@ const cors = require('cors');
 const fs = require('fs');
 const { generateVideo } = require('./automate');
 const bodyParser = require('body-parser');
+const { exec } = require('child_process');
+const util = require('util');
+const execAsync = util.promisify(exec);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 let isProcessing = false;
 
-// Middleware
 app.use(cors());
 app.use(bodyParser.text({ limit: '50mb' }));
 app.use(express.static('build'));
 
-// Cleanup function
 const cleanupFiles = () => {
-    const dirs = ['frames', 'temp'];
-    dirs.forEach(dir => {
+    ['frames', 'temp'].forEach(dir => {
         const dirPath = path.join(__dirname, dir);
         if (fs.existsSync(dirPath)) {
             fs.rmSync(dirPath, { recursive: true, force: true });
@@ -25,7 +25,23 @@ const cleanupFiles = () => {
     });
 };
 
-// Video generation endpoint
+async function updateAppAndBuild(content) {
+    const srcDir = path.join(__dirname, 'src');
+    fs.mkdirSync(srcDir, { recursive: true });
+    fs.writeFileSync(path.join(srcDir, 'App.js'), content);
+    console.log('App.js updated');
+
+    // Build React app
+    await execAsync('npm run build');
+    console.log('Build completed');
+
+    // Verify build
+    const buildPath = path.join(__dirname, 'build');
+    if (!fs.existsSync(buildPath)) {
+        throw new Error('Build failed - no build directory');
+    }
+}
+
 app.post('/generate-video', async (req, res) => {
     if (isProcessing) {
         return res.status(429).json({ error: 'Server busy' });
@@ -36,11 +52,8 @@ app.post('/generate-video', async (req, res) => {
     cleanupFiles();
 
     try {
-        // Update App.js
-        const srcDir = path.join(__dirname, 'src');
-        fs.mkdirSync(srcDir, { recursive: true });
-        fs.writeFileSync(path.join(srcDir, 'App.js'), req.body);
-        console.log('App.js updated');
+        // Update App.js and rebuild
+        await updateAppAndBuild(req.body);
 
         // Generate video
         const videoPath = await generateVideo();
@@ -50,7 +63,6 @@ app.post('/generate-video', async (req, res) => {
             throw new Error('Video file not created');
         }
 
-        // Send response
         res.setHeader('Content-Type', 'video/mp4');
         const stream = fs.createReadStream(videoPath);
         
@@ -82,13 +94,11 @@ app.post('/generate-video', async (req, res) => {
     }
 });
 
-// Start server
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port ${PORT}`);
     cleanupFiles();
 });
 
-// Handle shutdown
 process.on('SIGTERM', () => {
     cleanupFiles();
     process.exit(0);

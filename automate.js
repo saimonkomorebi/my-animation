@@ -7,10 +7,13 @@ const ffmpeg = require('@ffmpeg-installer/ffmpeg');
 const util = require('util');
 const execFilePromise = util.promisify(execFile);
 
-const FRAME_TIMEOUT = 3000;
-const FRAME_DELAY = 100;
-const TOTAL_FRAMES = 30;
-const MAX_RETRIES = 3;
+const CONFIG = {
+    FRAME_TIMEOUT: 3000,
+    FRAME_DELAY: 100,
+    TOTAL_FRAMES: 30,
+    MAX_RETRIES: 3,
+    PAGE_LOAD_TIMEOUT: 30000
+};
 
 async function captureFrame(page, frameNumber, framesDir, retryCount = 0) {
     const framePath = path.join(framesDir, `frame_${String(frameNumber).padStart(4, '0')}.png`);
@@ -18,18 +21,29 @@ async function captureFrame(page, frameNumber, framesDir, retryCount = 0) {
     try {
         await Promise.race([
             (async () => {
+                // Wait for React hydration
+                await page.evaluate(() => {
+                    return new Promise(resolve => {
+                        if (window.setCurrentFrame) {
+                            resolve();
+                        } else {
+                            window.addEventListener('load', resolve, { once: true });
+                        }
+                    });
+                });
+
                 await page.evaluate(frame => window.setCurrentFrame(frame), frameNumber);
-                await page.waitForTimeout(FRAME_DELAY);
+                await page.waitForTimeout(CONFIG.FRAME_DELAY);
                 await page.screenshot({ path: framePath });
             })(),
             new Promise((_, reject) => 
-                setTimeout(() => reject(new Error(`Frame ${frameNumber} timeout`)), FRAME_TIMEOUT)
+                setTimeout(() => reject(new Error(`Frame ${frameNumber} timeout`)), CONFIG.FRAME_TIMEOUT)
             )
         ]);
 
         return framePath;
     } catch (error) {
-        if (retryCount < MAX_RETRIES) {
+        if (retryCount < CONFIG.MAX_RETRIES) {
             console.log(`Retrying frame ${frameNumber} (attempt ${retryCount + 1})`);
             await page.reload({ waitUntil: 'networkidle0' });
             return captureFrame(page, frameNumber, framesDir, retryCount + 1);
@@ -43,13 +57,11 @@ async function generateVideo() {
     const framesDir = path.join(__dirname, 'frames');
 
     try {
-        // Setup directories
         if (fs.existsSync(framesDir)) {
             fs.rmSync(framesDir, { recursive: true });
         }
         fs.mkdirSync(framesDir);
 
-        // Launch browser
         browser = await puppeteer.launch({
             executablePath: await chromium.executablePath(),
             headless: chromium.headless,
@@ -64,20 +76,25 @@ async function generateVideo() {
         const page = await browser.newPage();
         await page.setViewport({ width: 400, height: 300 });
         
-        // Load page
+        // Load page with verification
+        console.log('Loading page with new content...');
         await page.goto(`http://localhost:${process.env.PORT || 3000}`, {
-            waitUntil: 'networkidle0',
-            timeout: 30000
+            waitUntil: ['networkidle0', 'domcontentloaded'],
+            timeout: CONFIG.PAGE_LOAD_TIMEOUT
         });
+
+        // Verify React is loaded
+        await page.waitForFunction(() => {
+            return window.setCurrentFrame && document.readyState === 'complete';
+        }, { timeout: CONFIG.PAGE_LOAD_TIMEOUT });
 
         // Capture frames
         console.log('Capturing frames...');
-        for (let i = 0; i < TOTAL_FRAMES; i++) {
-            console.log(`Frame ${i + 1}/${TOTAL_FRAMES}`);
+        for (let i = 0; i < CONFIG.TOTAL_FRAMES; i++) {
+            console.log(`Frame ${i + 1}/${CONFIG.TOTAL_FRAMES}`);
             await captureFrame(page, i, framesDir);
         }
 
-        // Generate video
         const outputPath = path.join(__dirname, `output_${Date.now()}.mp4`);
         await execFilePromise(ffmpeg.path, [
             '-y',
@@ -95,7 +112,6 @@ async function generateVideo() {
         if (browser) {
             await browser.close();
         }
-        // Cleanup frames
         if (fs.existsSync(framesDir)) {
             fs.rmSync(framesDir, { recursive: true });
         }
