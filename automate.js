@@ -74,7 +74,7 @@ async function generateVideo() {
         });
 
         const page = await browser.newPage();
-        await page.setViewport({ width: 400, height: 300 });
+        await page.setViewport({ width: 1080, height: 1920 });
         
         // Load page with verification
         console.log('Loading page with new content...');

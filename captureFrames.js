@@ -32,7 +32,7 @@ const runCommand = (command) => {
   });
   const page = await browser.newPage();
   await page.goto('http://localhost:3000');
-  await page.setViewport({ width: 800, height: 600 });
+  await page.setViewport({ width: 1080, height: 1920 });
 
   console.log('Capturing frames...');
 
